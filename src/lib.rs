@@ -1,4 +1,4 @@
-use std::io::{self, Stdout, Write};
+use std::io::{self, BufRead, StdinLock, Stdout, Write};
 
 type Program = Vec<Vec<char>>;
 type InstructionPointer = (usize, usize);
@@ -26,7 +26,7 @@ enum Mode {
 }
 
 #[derive(Debug)]
-pub struct Interpreter<T: Write> {
+pub struct Interpreter<R: BufRead, W: Write> {
     stack: Vec<isize>,
     program: Program,
     instr_ptr: InstructionPointer,
@@ -34,7 +34,8 @@ pub struct Interpreter<T: Write> {
     width: usize,
     height: usize,
     mode: Mode,
-    output: T,
+    input: R,
+    output: W,
 }
 
 #[derive(Debug)]
@@ -48,8 +49,8 @@ pub enum InterpreterError {
 
 type InterpreterResult<T> = Result<T, InterpreterError>;
 
-impl<T: Write> Interpreter<T> {
-    pub fn new(output: T) -> Self {
+impl<R: BufRead, W: Write> Interpreter<R, W> {
+    pub fn new(input: R, output: W) -> Self {
         let stack = Vec::new();
         let program = Vec::new();
         let instr_ptr = (0, 0);
@@ -66,6 +67,7 @@ impl<T: Write> Interpreter<T> {
             width,
             height,
             mode,
+            input,
             output,
         }
     }
@@ -136,6 +138,8 @@ impl<T: Write> Interpreter<T> {
                     '#' => self.trampoline()?,
                     'p' => self.put()?,
                     'g' => self.get()?,
+                    '&' => self.input_int()?,
+                    '~' => self.input_char()?,
                     ' ' => (),
                     '@' => break,
                     _ if instruction.is_ascii_digit() => self.push_digit_to_stack()?,
@@ -370,6 +374,25 @@ impl<T: Write> Interpreter<T> {
         Ok(())
     }
 
+    fn input_int(&mut self) -> InterpreterResult<()> {
+        let mut s = String::new();
+        self.input.read_line(&mut s).unwrap(); // TODO: handle unwrap
+        let n: isize = s.trim().parse().unwrap();
+        self.stack.push(n);
+
+        Ok(())
+    }
+
+    fn input_char(&mut self) -> InterpreterResult<()> {
+        let mut s: [u8; 1] = [0; 1];
+        self.input.read_exact(&mut s).unwrap();
+
+        let n = s[0] as isize;
+        self.stack.push(n);
+
+        Ok(())
+    }
+
     fn trampoline(&mut self) -> InterpreterResult<()> {
         self.move_instr_ptr();
 
@@ -413,9 +436,9 @@ impl<T: Write> Interpreter<T> {
     }
 }
 
-impl Default for Interpreter<Stdout> {
+impl Default for Interpreter<StdinLock<'static>, Stdout> {
     fn default() -> Self {
-        Self::new(io::stdout())
+        Self::new(io::stdin().lock(), io::stdout())
     }
 }
 
@@ -427,8 +450,9 @@ mod tests {
 
     #[test]
     fn test_hello_world() {
+        let input = Cursor::new(Vec::new());
         let c = Cursor::new(Vec::new());
-        let mut interpreter = Interpreter::new(c);
+        let mut interpreter = Interpreter::new(input, c);
         let program = include_str!("../programs/hello-world.txt");
         interpreter.load_program(program).unwrap();
 
@@ -440,8 +464,9 @@ mod tests {
 
     #[test]
     fn test_factorial() {
+        let input = Cursor::new(Vec::new());
         let c = Cursor::new(Vec::new());
-        let mut interpreter = Interpreter::new(c);
+        let mut interpreter = Interpreter::new(input, c);
         let program = include_str!("../programs/factorial.txt");
         interpreter.load_program(program).unwrap();
 
@@ -453,8 +478,9 @@ mod tests {
 
     #[test]
     fn test_quine() {
+        let input = Cursor::new(Vec::new());
         let c = Cursor::new(Vec::new());
-        let mut interpreter = Interpreter::new(c);
+        let mut interpreter = Interpreter::new(input, c);
         let program = include_str!("../programs/quine.txt");
         interpreter.load_program(program).unwrap();
 

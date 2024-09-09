@@ -1,12 +1,20 @@
 use befunge93_rs::*;
-use std::io::{self, Read};
+use std::{
+    env,
+    fs::File,
+    io::{self, BufReader, Read},
+};
 
 fn main() -> io::Result<()> {
-    let mut input = String::new();
-    io::stdin().read_to_string(&mut input)?;
+    let path = env::args().nth(1).unwrap(); // TODO: handle unwrap
+
+    let file = File::open(path)?;
+    let mut buf_reader = BufReader::new(file);
+    let mut program = String::new();
+    buf_reader.read_to_string(&mut program)?;
 
     let mut interpreter = Interpreter::default();
-    interpreter.load_program(&input).unwrap();
+    interpreter.load_program(&program).unwrap();
 
     interpreter.run().unwrap();
 
