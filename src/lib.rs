@@ -26,8 +26,34 @@ enum Mode {
 }
 
 #[derive(Debug)]
+struct Stack<T: Copy> {
+    inner: Vec<T>,
+    default: T,
+}
+
+impl<T: Copy> Stack<T> {
+    fn new(default: T) -> Self {
+        let inner = Vec::new();
+
+        Stack { inner, default }
+    }
+
+    fn pop(&mut self) -> T {
+        self.inner.pop().unwrap_or(self.default)
+    }
+
+    fn pop2(&mut self) -> (T, T) {
+        (self.pop(), self.pop())
+    }
+
+    fn push(&mut self, value: T) {
+        self.inner.push(value);
+    }
+}
+
+#[derive(Debug)]
 pub struct Interpreter<R: BufRead, W: Write> {
-    stack: Vec<isize>,
+    stack: Stack<isize>,
     program: Program,
     pc: ProgramCounter,
     direction: Direction,
@@ -51,7 +77,7 @@ type InterpreterResult<T> = Result<T, InterpreterError>;
 
 impl<R: BufRead, W: Write> Interpreter<R, W> {
     pub fn new(input: R, output: W) -> Self {
-        let stack = Vec::new();
+        let stack = Stack::new(0);
         let program = Vec::new();
         let pc = (0, 0);
         let direction = Direction::Right;
@@ -157,14 +183,6 @@ impl<R: BufRead, W: Write> Interpreter<R, W> {
         self.program[i][j]
     }
 
-    fn pop_stack(&mut self) -> isize {
-        self.stack.pop().unwrap_or(0)
-    }
-
-    fn pop_stack_2(&mut self) -> (isize, isize) {
-        (self.pop_stack(), self.pop_stack())
-    }
-
     fn move_pc(&mut self) {
         let (i, j) = &mut self.pc;
 
@@ -185,28 +203,28 @@ impl<R: BufRead, W: Write> Interpreter<R, W> {
     }
 
     fn add(&mut self) -> InterpreterResult<()> {
-        let (a, b) = self.pop_stack_2();
+        let (a, b) = self.stack.pop2();
         self.stack.push(a + b);
 
         Ok(())
     }
 
     fn subtract(&mut self) -> InterpreterResult<()> {
-        let (a, b) = self.pop_stack_2();
+        let (a, b) = self.stack.pop2();
         self.stack.push(b - a);
 
         Ok(())
     }
 
     fn multiply(&mut self) -> InterpreterResult<()> {
-        let (a, b) = self.pop_stack_2();
+        let (a, b) = self.stack.pop2();
         self.stack.push(a * b);
 
         Ok(())
     }
 
     fn divide(&mut self) -> InterpreterResult<()> {
-        let (a, b) = self.pop_stack_2();
+        let (a, b) = self.stack.pop2();
         let n = if a == 0 { 0 } else { b / a };
         self.stack.push(n);
 
@@ -214,7 +232,7 @@ impl<R: BufRead, W: Write> Interpreter<R, W> {
     }
 
     fn remainder(&mut self) -> InterpreterResult<()> {
-        let (a, b) = self.pop_stack_2();
+        let (a, b) = self.stack.pop2();
         let n = if a == 0 { 0 } else { b % a };
         self.stack.push(n);
 
@@ -222,7 +240,7 @@ impl<R: BufRead, W: Write> Interpreter<R, W> {
     }
 
     fn logical_not(&mut self) -> InterpreterResult<()> {
-        let a = self.pop_stack();
+        let a = self.stack.pop();
         let n = if a == 0 { 1 } else { 0 };
         self.stack.push(n);
 
@@ -230,7 +248,7 @@ impl<R: BufRead, W: Write> Interpreter<R, W> {
     }
 
     fn greater_than(&mut self) -> InterpreterResult<()> {
-        let (a, b) = self.pop_stack_2();
+        let (a, b) = self.stack.pop2();
         let n = if b > a { 1 } else { 0 };
         self.stack.push(n);
 
@@ -273,7 +291,7 @@ pty",
     }
 
     fn horizontal_if(&mut self) -> InterpreterResult<()> {
-        let n = self.pop_stack();
+        let n = self.stack.pop();
         self.direction = if n == 0 {
             Direction::Right
         } else {
@@ -284,7 +302,7 @@ pty",
     }
 
     fn vertical_if(&mut self) -> InterpreterResult<()> {
-        let n = self.pop_stack();
+        let n = self.stack.pop();
         self.direction = if n == 0 {
             Direction::Down
         } else {
@@ -305,7 +323,7 @@ pty",
     }
 
     fn duplicate_top_of_the_stack(&mut self) -> InterpreterResult<()> {
-        let n = self.pop_stack();
+        let n = self.stack.pop();
         self.stack.push(n);
         self.stack.push(n);
 
@@ -313,7 +331,7 @@ pty",
     }
 
     fn swap_top_stack_values(&mut self) -> InterpreterResult<()> {
-        let (a, b) = self.pop_stack_2();
+        let (a, b) = self.stack.pop2();
         self.stack.push(a);
         self.stack.push(b);
 
@@ -321,13 +339,13 @@ pty",
     }
 
     fn pop_and_discard(&mut self) -> InterpreterResult<()> {
-        let _ = self.pop_stack();
+        let _ = self.stack.pop();
 
         Ok(())
     }
 
     fn pop_and_output_int(&mut self) -> InterpreterResult<()> {
-        let n = self.pop_stack().to_string();
+        let n = self.stack.pop().to_string();
         let x = n.as_bytes();
         self.output
             .write_all(x)
@@ -338,7 +356,8 @@ pty",
 
     fn pop_and_output_char(&mut self) -> InterpreterResult<()> {
         let n: u8 = self
-            .pop_stack()
+            .stack
+            .pop()
             .try_into()
             .or(Err(InterpreterError::InvalidAscii))?;
         self.output
@@ -374,10 +393,11 @@ pty",
     }
 
     fn put(&mut self) -> InterpreterResult<()> {
-        let y = self.pop_stack() as usize;
-        let x = self.pop_stack() as usize;
+        let y = self.stack.pop() as usize;
+        let x = self.stack.pop() as usize;
         let v_: u8 = self
-            .pop_stack()
+            .stack
+            .pop()
             .try_into()
             .or(Err(InterpreterError::InvalidAscii))?;
         let v = v_ as char;
@@ -394,8 +414,8 @@ pty",
     }
 
     fn get(&mut self) -> InterpreterResult<()> {
-        let y = self.pop_stack() as usize;
-        let x = self.pop_stack() as usize;
+        let y = self.stack.pop() as usize;
+        let x = self.stack.pop() as usize;
 
         let c = *self
             .program
@@ -472,7 +492,7 @@ mod tests {
 
         interpreter.run().unwrap();
 
-        assert_eq!(interpreter.stack[0], 3);
+        assert_eq!(interpreter.stack.pop(), 3);
     }
 
     #[test]
@@ -482,7 +502,7 @@ mod tests {
 
         interpreter.run().unwrap();
 
-        assert_eq!(interpreter.stack[0], -1);
+        assert_eq!(interpreter.stack.pop(), -1);
     }
 
     #[test]
@@ -492,7 +512,7 @@ mod tests {
 
         interpreter.run().unwrap();
 
-        assert_eq!(interpreter.stack[0], 12);
+        assert_eq!(interpreter.stack.pop(), 12);
     }
 
     #[test]
@@ -502,7 +522,7 @@ mod tests {
 
         interpreter.run().unwrap();
 
-        assert_eq!(interpreter.stack[0], 3);
+        assert_eq!(interpreter.stack.pop(), 3);
     }
 
     #[test]
@@ -512,6 +532,6 @@ mod tests {
 
         interpreter.run().unwrap();
 
-        assert_eq!(interpreter.stack[0], 0);
+        assert_eq!(interpreter.stack.pop(), 0);
     }
 }
