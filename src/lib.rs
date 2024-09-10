@@ -115,30 +115,30 @@ impl<R: BufRead, W: Write> Interpreter<R, W> {
             } else {
                 match instruction {
                     '+' => self.add()?,
-                    '-' => self.sub()?,
-                    '*' => self.mul()?,
-                    '/' => self.div()?,
-                    '%' => self.modulo()?,
-                    '!' => self.not()?,
-                    '`' => self.gt()?,
-                    '>' => self.move_right()?,
-                    '<' => self.move_left()?,
-                    '^' => self.move_up()?,
-                    'v' => self.move_down()?,
-                    '?' => self.move_randomly()?,
-                    '_' => self.pop_horizontal()?,
-                    '|' => self.pop_vertical()?,
+                    '-' => self.subtract()?,
+                    '*' => self.multiply()?,
+                    '/' => self.divide()?,
+                    '%' => self.remainder()?,
+                    '!' => self.logical_not()?,
+                    '`' => self.greater_than()?,
+                    '>' => self.start_moving_right()?,
+                    '<' => self.start_moving_left()?,
+                    '^' => self.start_moving_up()?,
+                    'v' => self.start_moving_down()?,
+                    '?' => self.start_moving_randomly()?,
+                    '_' => self.horizontal_if()?,
+                    '|' => self.vertical_if()?,
                     '"' => self.toggle_string_mode()?,
-                    ':' => self.duplicate_stack()?,
-                    '\\' => self.swap_stack()?,
+                    ':' => self.duplicate_top_of_the_stack()?,
+                    '\\' => self.swap_top_stack_values()?,
                     '$' => self.pop_and_discard()?,
-                    '.' => self.output_int()?,
-                    ',' => self.output_char()?,
-                    '#' => self.trampoline()?,
+                    '.' => self.pop_and_output_int()?,
+                    ',' => self.pop_and_output_char()?,
+                    '#' => self.bridge()?,
                     'p' => self.put()?,
                     'g' => self.get()?,
-                    '&' => self.input_int()?,
-                    '~' => self.input_char()?,
+                    '&' => self.get_int_and_push()?,
+                    '~' => self.get_char_and_push()?,
                     ' ' => (),
                     '@' => break,
                     _ if instruction.is_ascii_digit() => self.push_digit_to_stack()?,
@@ -188,7 +188,7 @@ impl<R: BufRead, W: Write> Interpreter<R, W> {
         Ok(())
     }
 
-    fn sub(&mut self) -> InterpreterResult<()> {
+    fn subtract(&mut self) -> InterpreterResult<()> {
         let a = self.pop_stack()?;
         let b = self.pop_stack()?;
         self.stack.push(b - a);
@@ -196,7 +196,7 @@ impl<R: BufRead, W: Write> Interpreter<R, W> {
         Ok(())
     }
 
-    fn mul(&mut self) -> InterpreterResult<()> {
+    fn multiply(&mut self) -> InterpreterResult<()> {
         let a = self.pop_stack()?;
         let b = self.pop_stack()?;
         self.stack.push(a * b);
@@ -204,7 +204,7 @@ impl<R: BufRead, W: Write> Interpreter<R, W> {
         Ok(())
     }
 
-    fn div(&mut self) -> InterpreterResult<()> {
+    fn divide(&mut self) -> InterpreterResult<()> {
         let a = self.pop_stack()?;
         let b = self.pop_stack()?;
 
@@ -215,7 +215,7 @@ impl<R: BufRead, W: Write> Interpreter<R, W> {
         Ok(())
     }
 
-    fn modulo(&mut self) -> InterpreterResult<()> {
+    fn remainder(&mut self) -> InterpreterResult<()> {
         let a = self.pop_stack()?;
         let b = self.pop_stack()?;
 
@@ -226,7 +226,7 @@ impl<R: BufRead, W: Write> Interpreter<R, W> {
         Ok(())
     }
 
-    fn not(&mut self) -> InterpreterResult<()> {
+    fn logical_not(&mut self) -> InterpreterResult<()> {
         let a = self.pop_stack()?;
 
         let n = if a == 0 { 1 } else { 0 };
@@ -236,7 +236,7 @@ impl<R: BufRead, W: Write> Interpreter<R, W> {
         Ok(())
     }
 
-    fn gt(&mut self) -> InterpreterResult<()> {
+    fn greater_than(&mut self) -> InterpreterResult<()> {
         let a = self.pop_stack()?;
         let b = self.pop_stack()?;
 
@@ -247,31 +247,31 @@ impl<R: BufRead, W: Write> Interpreter<R, W> {
         Ok(())
     }
 
-    fn move_right(&mut self) -> InterpreterResult<()> {
+    fn start_moving_right(&mut self) -> InterpreterResult<()> {
         self.direction = Direction::Right;
 
         Ok(())
     }
 
-    fn move_left(&mut self) -> InterpreterResult<()> {
+    fn start_moving_left(&mut self) -> InterpreterResult<()> {
         self.direction = Direction::Left;
 
         Ok(())
     }
 
-    fn move_up(&mut self) -> InterpreterResult<()> {
+    fn start_moving_up(&mut self) -> InterpreterResult<()> {
         self.direction = Direction::Up;
 
         Ok(())
     }
 
-    fn move_down(&mut self) -> InterpreterResult<()> {
+    fn start_moving_down(&mut self) -> InterpreterResult<()> {
         self.direction = Direction::Down;
 
         Ok(())
     }
 
-    fn move_randomly(&mut self) -> InterpreterResult<()> {
+    fn start_moving_randomly(&mut self) -> InterpreterResult<()> {
         let mut gen = rand::thread_rng();
         let direction = DIRECTIONS.choose(&mut gen).expect(
             "directions is not em
@@ -282,7 +282,7 @@ pty",
         Ok(())
     }
 
-    fn pop_horizontal(&mut self) -> InterpreterResult<()> {
+    fn horizontal_if(&mut self) -> InterpreterResult<()> {
         let n = self.pop_stack()?;
 
         self.direction = if n == 0 {
@@ -294,7 +294,7 @@ pty",
         Ok(())
     }
 
-    fn pop_vertical(&mut self) -> InterpreterResult<()> {
+    fn vertical_if(&mut self) -> InterpreterResult<()> {
         let n = self.pop_stack()?;
 
         self.direction = if n == 0 {
@@ -316,7 +316,7 @@ pty",
         Ok(())
     }
 
-    fn duplicate_stack(&mut self) -> InterpreterResult<()> {
+    fn duplicate_top_of_the_stack(&mut self) -> InterpreterResult<()> {
         if self.stack.is_empty() {
             self.stack.push(0);
         } else {
@@ -329,7 +329,7 @@ pty",
         Ok(())
     }
 
-    fn swap_stack(&mut self) -> InterpreterResult<()> {
+    fn swap_top_stack_values(&mut self) -> InterpreterResult<()> {
         if self.stack.is_empty() {
             return Err(InterpreterError::StackEmpty);
         } else if self.stack.len() == 1 {
@@ -350,7 +350,7 @@ pty",
         Ok(())
     }
 
-    fn output_int(&mut self) -> InterpreterResult<()> {
+    fn pop_and_output_int(&mut self) -> InterpreterResult<()> {
         let n = self.pop_stack()?.to_string();
         let x = n.as_bytes();
         self.output
@@ -360,7 +360,7 @@ pty",
         Ok(())
     }
 
-    fn output_char(&mut self) -> InterpreterResult<()> {
+    fn pop_and_output_char(&mut self) -> InterpreterResult<()> {
         let n: u8 = self
             .stack
             .pop()
@@ -374,7 +374,7 @@ pty",
         Ok(())
     }
 
-    fn input_int(&mut self) -> InterpreterResult<()> {
+    fn get_int_and_push(&mut self) -> InterpreterResult<()> {
         let mut s = String::new();
         self.input.read_line(&mut s).unwrap(); // TODO: handle unwrap
         let n: isize = s.trim().parse().unwrap();
@@ -383,7 +383,7 @@ pty",
         Ok(())
     }
 
-    fn input_char(&mut self) -> InterpreterResult<()> {
+    fn get_char_and_push(&mut self) -> InterpreterResult<()> {
         let mut s: [u8; 1] = [0; 1];
         self.input.read_exact(&mut s).unwrap();
 
@@ -393,7 +393,7 @@ pty",
         Ok(())
     }
 
-    fn trampoline(&mut self) -> InterpreterResult<()> {
+    fn bridge(&mut self) -> InterpreterResult<()> {
         self.move_pc();
 
         Ok(())
