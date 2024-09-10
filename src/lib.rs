@@ -447,11 +447,16 @@ mod tests {
 
     use super::*;
 
+    fn build_interpreter() -> Interpreter<Cursor<Vec<u8>>, Cursor<Vec<u8>>> {
+        let input = Cursor::new(Vec::new());
+        let output = Cursor::new(Vec::new());
+
+        Interpreter::new(input, output)
+    }
+
     #[test]
     fn test_hello_world() {
-        let input = Cursor::new(Vec::new());
-        let c = Cursor::new(Vec::new());
-        let mut interpreter = Interpreter::new(input, c);
+        let mut interpreter = build_interpreter();
         let program = include_str!("../programs/hello-world.txt");
         interpreter.load_program(program).unwrap();
 
@@ -463,9 +468,7 @@ mod tests {
 
     #[test]
     fn test_factorial() {
-        let input = Cursor::new(Vec::new());
-        let c = Cursor::new(Vec::new());
-        let mut interpreter = Interpreter::new(input, c);
+        let mut interpreter = build_interpreter();
         let program = include_str!("../programs/factorial.txt");
         interpreter.load_program(program).unwrap();
 
@@ -477,9 +480,7 @@ mod tests {
 
     #[test]
     fn test_quine() {
-        let input = Cursor::new(Vec::new());
-        let c = Cursor::new(Vec::new());
-        let mut interpreter = Interpreter::new(input, c);
+        let mut interpreter = build_interpreter();
         let program = include_str!("../programs/quine.txt");
         interpreter.load_program(program).unwrap();
 
