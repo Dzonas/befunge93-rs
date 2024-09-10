@@ -1,7 +1,7 @@
 use std::io::{self, BufRead, StdinLock, Stdout, Write};
 
 type Program = Vec<Vec<char>>;
-type InstructionPointer = (usize, usize);
+type ProgramCounter = (usize, usize);
 use rand::seq::SliceRandom;
 
 #[derive(Debug, Copy, Clone)]
@@ -29,7 +29,7 @@ enum Mode {
 pub struct Interpreter<R: BufRead, W: Write> {
     stack: Vec<isize>,
     program: Program,
-    instr_ptr: InstructionPointer,
+    pc: ProgramCounter,
     direction: Direction,
     width: usize,
     height: usize,
@@ -53,7 +53,7 @@ impl<R: BufRead, W: Write> Interpreter<R, W> {
     pub fn new(input: R, output: W) -> Self {
         let stack = Vec::new();
         let program = Vec::new();
-        let instr_ptr = (0, 0);
+        let pc = (0, 0);
         let direction = Direction::Right;
         let width = 0;
         let height = 0;
@@ -62,7 +62,7 @@ impl<R: BufRead, W: Write> Interpreter<R, W> {
         Interpreter {
             stack,
             program,
-            instr_ptr,
+            pc,
             direction,
             width,
             height,
@@ -146,14 +146,14 @@ impl<R: BufRead, W: Write> Interpreter<R, W> {
                 };
             }
 
-            self.move_instr_ptr();
+            self.move_pc();
         }
 
         Ok(())
     }
 
     fn get_instruction(&self) -> char {
-        let (i, j) = self.instr_ptr;
+        let (i, j) = self.pc;
         self.program[i][j]
     }
 
@@ -161,8 +161,8 @@ impl<R: BufRead, W: Write> Interpreter<R, W> {
         self.stack.pop().ok_or(InterpreterError::StackEmpty)
     }
 
-    fn move_instr_ptr(&mut self) {
-        let (i, j) = &mut self.instr_ptr;
+    fn move_pc(&mut self) {
+        let (i, j) = &mut self.pc;
 
         match self.direction {
             Direction::Left => *j = if *j == 0 { self.width - 1 } else { *j - 1 },
@@ -273,9 +273,10 @@ impl<R: BufRead, W: Write> Interpreter<R, W> {
 
     fn move_randomly(&mut self) -> InterpreterResult<()> {
         let mut gen = rand::thread_rng();
-        let direction = DIRECTIONS
-            .choose(&mut gen)
-            .expect("directions is not empty");
+        let direction = DIRECTIONS.choose(&mut gen).expect(
+            "directions is not em
+pty",
+        );
         self.direction = *direction;
 
         Ok(())
@@ -393,7 +394,7 @@ impl<R: BufRead, W: Write> Interpreter<R, W> {
     }
 
     fn trampoline(&mut self) -> InterpreterResult<()> {
-        self.move_instr_ptr();
+        self.move_pc();
 
         Ok(())
     }
