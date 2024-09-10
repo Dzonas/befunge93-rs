@@ -1,4 +1,7 @@
-use std::io::{self, BufRead, StdinLock, Stdout, Write};
+use std::{
+    io::{self, BufRead, StdinLock, Stdout, Write},
+    num::ParseIntError,
+};
 
 type Program = Vec<Vec<char>>;
 type ProgramCounter = (usize, usize);
@@ -72,6 +75,7 @@ pub enum InterpreterError {
     UnknownInstruction,
     InvalidAscii,
     InvalidCoordinates,
+    ParseError(ParseIntError),
 }
 
 type InterpreterResult<T> = Result<T, InterpreterError>;
@@ -370,8 +374,10 @@ pty",
 
     fn get_int_and_push(&mut self) -> InterpreterResult<()> {
         let mut s = String::new();
-        self.input.read_line(&mut s).unwrap(); // TODO: handle unwrap
-        let n: isize = s.trim().parse().unwrap();
+        self.input
+            .read_line(&mut s)
+            .map_err(InterpreterError::IoError)?;
+        let n: isize = s.trim().parse().map_err(InterpreterError::ParseError)?;
         self.stack.push(n);
 
         Ok(())
@@ -379,7 +385,9 @@ pty",
 
     fn get_char_and_push(&mut self) -> InterpreterResult<()> {
         let mut s: [u8; 1] = [0; 1];
-        self.input.read_exact(&mut s).unwrap();
+        self.input
+            .read_exact(&mut s)
+            .map_err(InterpreterError::IoError)?;
 
         let n = s[0] as isize;
         self.stack.push(n);
