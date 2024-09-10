@@ -490,4 +490,54 @@ mod tests {
         let x = String::from_utf8_lossy(interpreter.output.get_ref());
         assert_eq!(x, program.trim());
     }
+
+    #[test]
+    fn test_add_instruction() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("12+@").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack[0], 3);
+    }
+
+    #[test]
+    fn test_subtract_instruction() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("12-@").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack[0], -1);
+    }
+
+    #[test]
+    fn test_multiply_instruction() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("34*@").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack[0], 12);
+    }
+
+    #[test]
+    fn test_divide_instruction_with_non_zero_denominator() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("72/@").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack[0], 3);
+    }
+
+    #[test]
+    fn test_divide_instruction_with_zero_denominator() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("70/@").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack[0], 0);
+    }
 }
