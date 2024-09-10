@@ -467,6 +467,8 @@ mod tests {
     #[test]
     fn test_factorial() {
         let mut interpreter = build_interpreter();
+        interpreter.input.write_all("5\n".as_bytes()).unwrap();
+        interpreter.input.set_position(0);
         let program = include_str!("../programs/factorial.txt");
         interpreter.load_program(program).unwrap();
 
