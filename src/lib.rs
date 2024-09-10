@@ -2,7 +2,7 @@ use std::io::{self, BufRead, StdinLock, Stdout, Write};
 
 type Program = Vec<Vec<char>>;
 type ProgramCounter = (usize, usize);
-use rand::seq::SliceRandom;
+use rand::{rngs::ThreadRng, seq::SliceRandom, Rng};
 
 #[derive(Debug, Copy, Clone)]
 enum Direction {
@@ -52,7 +52,7 @@ impl<T: Copy> Stack<T> {
 }
 
 #[derive(Debug)]
-pub struct Interpreter<R: BufRead, W: Write> {
+pub struct Interpreter<R: BufRead, W: Write, G: Rng> {
     stack: Stack<isize>,
     program: Program,
     pc: ProgramCounter,
@@ -62,6 +62,7 @@ pub struct Interpreter<R: BufRead, W: Write> {
     mode: Mode,
     input: R,
     output: W,
+    gen: G,
 }
 
 #[derive(Debug)]
@@ -75,8 +76,8 @@ pub enum InterpreterError {
 
 type InterpreterResult<T> = Result<T, InterpreterError>;
 
-impl<R: BufRead, W: Write> Interpreter<R, W> {
-    pub fn new(input: R, output: W) -> Self {
+impl<R: BufRead, W: Write, G: Rng> Interpreter<R, W, G> {
+    pub fn new(input: R, output: W, gen: G) -> Self {
         let stack = Stack::new(0);
         let program = Vec::new();
         let pc = (0, 0);
@@ -95,6 +96,7 @@ impl<R: BufRead, W: Write> Interpreter<R, W> {
             mode,
             input,
             output,
+            gen,
         }
     }
 
@@ -280,8 +282,7 @@ impl<R: BufRead, W: Write> Interpreter<R, W> {
     }
 
     fn start_moving_randomly(&mut self) -> InterpreterResult<()> {
-        let mut gen = rand::thread_rng();
-        let direction = DIRECTIONS.choose(&mut gen).expect(
+        let direction = DIRECTIONS.choose(&mut self.gen).expect(
             "directions is not em
 pty",
         );
@@ -430,23 +431,25 @@ pty",
     }
 }
 
-impl Default for Interpreter<StdinLock<'static>, Stdout> {
+impl Default for Interpreter<StdinLock<'static>, Stdout, ThreadRng> {
     fn default() -> Self {
-        Self::new(io::stdin().lock(), io::stdout())
+        Self::new(io::stdin().lock(), io::stdout(), rand::thread_rng())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use io::Cursor;
+    use rand::{rngs::StdRng, SeedableRng};
 
     use super::*;
 
-    fn build_interpreter() -> Interpreter<Cursor<Vec<u8>>, Cursor<Vec<u8>>> {
+    fn build_interpreter() -> Interpreter<Cursor<Vec<u8>>, Cursor<Vec<u8>>, StdRng> {
         let input = Cursor::new(Vec::new());
         let output = Cursor::new(Vec::new());
+        let gen = StdRng::seed_from_u64(123);
 
-        Interpreter::new(input, output)
+        Interpreter::new(input, output, gen)
     }
 
     #[test]
@@ -533,5 +536,118 @@ mod tests {
         interpreter.run().unwrap();
 
         assert_eq!(interpreter.stack.pop(), 0);
+    }
+
+    #[test]
+    fn test_remainder_instruction() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("052%@").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack.pop(), 1);
+    }
+
+    #[test]
+    fn test_logical_not_when_top_of_the_stack_is_zero() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("0!@").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack.pop(), 1);
+    }
+
+    #[test]
+    fn test_logical_not_when_top_of_the_stack_is_non_zero() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("5!%@").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack.pop(), 0);
+    }
+
+    #[test]
+    fn test_greater_than_when_top_of_the_stack_is_greater_than_next() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("25`@").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack.pop(), 0);
+    }
+
+    #[test]
+    fn test_greater_than_when_top_of_the_stack_is_lesser_than_next() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("52`@").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack.pop(), 1);
+    }
+
+    #[test]
+    fn test_greater_than_when_top_of_the_stack_is_lesser_equal_to_next() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("52`@").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack.pop(), 1);
+    }
+
+    #[test]
+    fn test_start_moving_right() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("v  \n>1@").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack.pop(), 1);
+    }
+
+    #[test]
+    fn test_start_moving_left() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("<@1").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack.pop(), 1);
+    }
+
+    #[test]
+    fn test_start_moving_up() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("^\n@\n1").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack.pop(), 1);
+    }
+
+    #[test]
+    fn test_start_moving_down() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("v\n1\n@").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack.pop(), 1);
+    }
+
+    #[test]
+    fn test_start_moving_randomly() {
+        let input = Cursor::new(Vec::new());
+        let output = Cursor::new(Vec::new());
+        let gen = StdRng::seed_from_u64(123);
+        let mut interpreter = Interpreter::new(input, output, gen);
+        interpreter.load_program("?\n@\n1").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack.pop(), 1);
     }
 }
