@@ -105,7 +105,6 @@ impl<R: BufRead, W: Write> Interpreter<R, W> {
 
         loop {
             let instruction = self.get_instruction();
-            // println!("{}", instruction);
 
             if self.mode == Mode::String {
                 if instruction == '"' {
