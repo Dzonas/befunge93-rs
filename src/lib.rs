@@ -286,10 +286,9 @@ impl<R: BufRead, W: Write, G: Rng> Interpreter<R, W, G> {
     }
 
     fn start_moving_randomly(&mut self) -> InterpreterResult<()> {
-        let direction = DIRECTIONS.choose(&mut self.gen).expect(
-            "directions is not em
-pty",
-        );
+        let direction = DIRECTIONS
+            .choose(&mut self.gen)
+            .expect("directions is not empty");
         self.direction = *direction;
 
         Ok(())
