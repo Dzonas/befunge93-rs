@@ -72,7 +72,7 @@ pub struct Interpreter<R: BufRead, W: Write, G: Rng> {
 pub enum InterpreterError {
     StackEmpty,
     IoError(io::Error),
-    UnknownInstruction,
+    UnknownInstruction(char),
     InvalidAscii,
     InvalidCoordinates,
     ParseError(ParseIntError),
@@ -166,7 +166,7 @@ impl<R: BufRead, W: Write, G: Rng> Interpreter<R, W, G> {
                     ' ' => (),
                     '@' => break,
                     _ if instruction.is_ascii_digit() => self.push_digit_to_stack()?,
-                    _ => panic!("unknown instruction"),
+                    i => return Err(InterpreterError::UnknownInstruction(i)),
                 };
             }
 
