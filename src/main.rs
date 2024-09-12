@@ -1,4 +1,5 @@
 use befunge93_rs::*;
+use std::process::exit;
 use std::{
     env,
     fs::File,
@@ -6,8 +7,13 @@ use std::{
 };
 
 fn main() -> io::Result<()> {
-    let path = env::args().nth(1).unwrap(); // TODO: handle unwrap
+    let mut args = env::args();
+    if args.len() < 2 {
+        println!("Usage: befunge93-rs [PATH]");
+        exit(1);
+    }
 
+    let path = args.nth(1).expect("at least 2 arguments");
     let file = File::open(path)?;
     let mut buf_reader = BufReader::new(file);
     let mut program = String::new();
