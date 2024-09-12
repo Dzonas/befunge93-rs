@@ -659,4 +659,163 @@ mod tests {
 
         assert_eq!(interpreter.stack.pop(), 1);
     }
+
+    #[test]
+    fn test_horizontal_if_when_0() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("v\n0\n_1@").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack.pop(), 1);
+    }
+
+    #[test]
+    fn test_horizontal_if_when_other_than_0() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("v\n1\n_@1").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack.pop(), 1);
+    }
+
+    #[test]
+    fn test_vertical_if_when_0() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("0|\n 1\n @").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack.pop(), 1);
+    }
+
+    #[test]
+    fn test_vertical_if_when_other_than_0() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("1|\n @\n 1").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack.pop(), 1);
+    }
+
+    #[test]
+    fn test_string_mode() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("\"HA\"@").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack.pop(), 65);
+        assert_eq!(interpreter.stack.pop(), 72);
+    }
+
+    #[test]
+    fn test_duplicate_top_of_the_stack() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("1:@").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack.pop(), 1);
+        assert_eq!(interpreter.stack.pop(), 1);
+    }
+
+    #[test]
+    fn test_swap_top_stack_values() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("12\\@").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack.pop(), 1);
+        assert_eq!(interpreter.stack.pop(), 2);
+    }
+
+    #[test]
+    fn test_pop_and_discard() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("1$@").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert!(interpreter.stack.inner.is_empty());
+    }
+
+    #[test]
+    fn test_pop_and_output_int() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("79*2+.@").unwrap();
+
+        interpreter.run().unwrap();
+
+        let output = String::from_utf8_lossy(interpreter.output.get_ref());
+        assert_eq!(output, "65");
+    }
+
+    #[test]
+    fn test_pop_and_output_char() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("79*2+,@").unwrap();
+
+        interpreter.run().unwrap();
+
+        let output = String::from_utf8_lossy(interpreter.output.get_ref());
+        assert_eq!(output, "A");
+    }
+
+    #[test]
+    fn test_bridge() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("1@1@").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack.pop(), 1);
+    }
+
+    #[test]
+    fn test_put() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("79*2+21p@\n\n").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.program[1][2], 'A');
+    }
+
+    #[test]
+    fn test_get() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("21g@\n  A").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack.pop(), 65);
+    }
+
+    #[test]
+    fn test_get_int_and_push() {
+        let mut interpreter = build_interpreter();
+        interpreter.input.write_all("65\n".as_bytes()).unwrap();
+        interpreter.input.set_position(0);
+        interpreter.load_program("&@").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack.pop(), 65);
+    }
+
+    #[test]
+    fn test_get_char_and_push() {
+        let mut interpreter = build_interpreter();
+        interpreter.input.write_all("A\n".as_bytes()).unwrap();
+        interpreter.input.set_position(0);
+        interpreter.load_program("~@").unwrap();
+
+        interpreter.run().unwrap();
+
+        assert_eq!(interpreter.stack.pop(), 65);
+    }
 }
