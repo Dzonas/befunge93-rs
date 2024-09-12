@@ -105,15 +105,7 @@ impl<R: BufRead, W: Write, G: Rng> Interpreter<R, W, G> {
     }
 
     pub fn load_program(&mut self, program: &str) -> InterpreterResult<()> {
-        if program.is_empty() {
-            return Ok(());
-        }
-
-        let longest_line_len = program
-            .lines()
-            .map(|line| line.len())
-            .max()
-            .expect("program is not empty");
+        let longest_line_len = program.lines().map(|line| line.len()).max().unwrap_or(0);
         let rows_len = program.lines().count();
 
         self.program = vec![vec![' '; longest_line_len]; rows_len];
