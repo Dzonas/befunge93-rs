@@ -502,6 +502,16 @@ mod tests {
     }
 
     #[test]
+    fn test_push_digit_to_stack() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("1").unwrap();
+
+        interpreter.step().unwrap();
+
+        assert_eq!(interpreter.stack.pop(), 1);
+    }
+
+    #[test]
     fn test_add_instruction() {
         let mut interpreter = build_interpreter();
         interpreter.load_program("12+@").unwrap();
