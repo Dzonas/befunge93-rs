@@ -66,6 +66,7 @@ pub struct Interpreter<R: BufRead, W: Write, G: Rng> {
     input: R,
     output: W,
     gen: G,
+    running: bool,
 }
 
 #[derive(Debug)]
@@ -89,6 +90,7 @@ impl<R: BufRead, W: Write, G: Rng> Interpreter<R, W, G> {
         let width = 0;
         let height = 0;
         let mode = Mode::Normal;
+        let running = false;
 
         Interpreter {
             stack,
@@ -101,6 +103,7 @@ impl<R: BufRead, W: Write, G: Rng> Interpreter<R, W, G> {
             input,
             output,
             gen,
+            running,
         }
     }
 
@@ -127,51 +130,60 @@ impl<R: BufRead, W: Write, G: Rng> Interpreter<R, W, G> {
             return Ok(());
         }
 
-        loop {
-            let instruction = self.get_instruction();
-
-            if self.mode == Mode::String {
-                if instruction == '"' {
-                    self.toggle_string_mode()?;
-                } else {
-                    self.stack.push((instruction as u8).into());
-                }
-            } else {
-                match instruction {
-                    '+' => self.add()?,
-                    '-' => self.subtract()?,
-                    '*' => self.multiply()?,
-                    '/' => self.divide()?,
-                    '%' => self.remainder()?,
-                    '!' => self.logical_not()?,
-                    '`' => self.greater_than()?,
-                    '>' => self.start_moving_right()?,
-                    '<' => self.start_moving_left()?,
-                    '^' => self.start_moving_up()?,
-                    'v' => self.start_moving_down()?,
-                    '?' => self.start_moving_randomly()?,
-                    '_' => self.horizontal_if()?,
-                    '|' => self.vertical_if()?,
-                    '"' => self.toggle_string_mode()?,
-                    ':' => self.duplicate_top_of_the_stack()?,
-                    '\\' => self.swap_top_stack_values()?,
-                    '$' => self.pop_and_discard()?,
-                    '.' => self.pop_and_output_int()?,
-                    ',' => self.pop_and_output_char()?,
-                    '#' => self.bridge()?,
-                    'p' => self.put()?,
-                    'g' => self.get()?,
-                    '&' => self.get_int_and_push()?,
-                    '~' => self.get_char_and_push()?,
-                    ' ' => (),
-                    '@' => break,
-                    _ if instruction.is_ascii_digit() => self.push_digit_to_stack()?,
-                    i => return Err(InterpreterError::UnknownInstruction(i)),
-                };
-            }
-
-            self.move_pc();
+        self.running = true;
+        while self.running {
+            self.step()?;
         }
+
+        Ok(())
+    }
+
+    pub fn step(&mut self) -> InterpreterResult<()> {
+        self.running = true;
+
+        let instruction = self.get_instruction();
+
+        if self.mode == Mode::String {
+            if instruction == '"' {
+                self.toggle_string_mode()?;
+            } else {
+                self.stack.push((instruction as u8).into());
+            }
+        } else {
+            match instruction {
+                '+' => self.add()?,
+                '-' => self.subtract()?,
+                '*' => self.multiply()?,
+                '/' => self.divide()?,
+                '%' => self.remainder()?,
+                '!' => self.logical_not()?,
+                '`' => self.greater_than()?,
+                '>' => self.start_moving_right()?,
+                '<' => self.start_moving_left()?,
+                '^' => self.start_moving_up()?,
+                'v' => self.start_moving_down()?,
+                '?' => self.start_moving_randomly()?,
+                '_' => self.horizontal_if()?,
+                '|' => self.vertical_if()?,
+                '"' => self.toggle_string_mode()?,
+                ':' => self.duplicate_top_of_the_stack()?,
+                '\\' => self.swap_top_stack_values()?,
+                '$' => self.pop_and_discard()?,
+                '.' => self.pop_and_output_int()?,
+                ',' => self.pop_and_output_char()?,
+                '#' => self.bridge()?,
+                'p' => self.put()?,
+                'g' => self.get()?,
+                '&' => self.get_int_and_push()?,
+                '~' => self.get_char_and_push()?,
+                ' ' => (),
+                '@' => self.running = false,
+                _ if instruction.is_ascii_digit() => self.push_digit_to_stack()?,
+                i => return Err(InterpreterError::UnknownInstruction(i)),
+            };
+        }
+
+        self.move_pc();
 
         Ok(())
     }
