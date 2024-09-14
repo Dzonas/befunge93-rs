@@ -78,10 +78,10 @@ pub enum InterpreterError {
     IoError(#[from] io::Error),
     #[error("unknown instruction encountered: `{0}`")]
     UnknownInstruction(char),
-    #[error("unknown ascii code encountered")]
-    InvalidAscii,
+    #[error("unknown ascii code encountered: `{0}`")]
+    InvalidAscii(isize),
     #[error("tried to access invalid coordinates")]
-    InvalidCoordinates,
+    InvalidCoordinates { x: isize, y: isize },
     #[error("parse int error encountered")]
     ParseError(#[from] ParseIntError),
 }
@@ -193,6 +193,16 @@ impl<R: BufRead, W: Write, G: Rng> Interpreter<R, W, G> {
         self.move_pc();
 
         Ok(())
+    }
+
+    fn pop_ascii(&mut self) -> InterpreterResult<char> {
+        let v__ = self.stack.pop();
+        let v_: u8 = v__
+            .try_into()
+            .or(Err(InterpreterError::InvalidAscii(v__)))?;
+        let v = v_ as char;
+
+        Ok(v)
     }
 
     fn get_instruction(&self) -> char {
@@ -362,32 +372,23 @@ impl<R: BufRead, W: Write, G: Rng> Interpreter<R, W, G> {
     fn pop_and_output_int(&mut self) -> InterpreterResult<()> {
         let n = self.stack.pop().to_string();
         let x = n.as_bytes();
-        self.output
-            .write_all(x)
-            .map_err(InterpreterError::IoError)?;
+        self.output.write_all(x)?;
 
         Ok(())
     }
 
     fn pop_and_output_char(&mut self) -> InterpreterResult<()> {
-        let n: u8 = self
-            .stack
-            .pop()
-            .try_into()
-            .or(Err(InterpreterError::InvalidAscii))?;
-        self.output
-            .write_all(&[n])
-            .map_err(InterpreterError::IoError)?;
+        let c = self.pop_ascii()?;
+        let n = c as u8;
+        self.output.write_all(&[n])?;
 
         Ok(())
     }
 
     fn get_int_and_push(&mut self) -> InterpreterResult<()> {
         let mut s = String::new();
-        self.input
-            .read_line(&mut s)
-            .map_err(InterpreterError::IoError)?;
-        let n: isize = s.trim().parse().map_err(InterpreterError::ParseError)?;
+        self.input.read_line(&mut s)?;
+        let n: isize = s.trim().parse()?;
         self.stack.push(n);
 
         Ok(())
@@ -395,9 +396,7 @@ impl<R: BufRead, W: Write, G: Rng> Interpreter<R, W, G> {
 
     fn get_char_and_push(&mut self) -> InterpreterResult<()> {
         let mut s: [u8; 1] = [0; 1];
-        self.input
-            .read_exact(&mut s)
-            .map_err(InterpreterError::IoError)?;
+        self.input.read_exact(&mut s)?;
 
         let n = s[0] as isize;
         self.stack.push(n);
@@ -412,36 +411,40 @@ impl<R: BufRead, W: Write, G: Rng> Interpreter<R, W, G> {
     }
 
     fn put(&mut self) -> InterpreterResult<()> {
-        let y = self.stack.pop() as usize;
-        let x = self.stack.pop() as usize;
-        let v_: u8 = self
-            .stack
-            .pop()
-            .try_into()
-            .or(Err(InterpreterError::InvalidAscii))?;
-        let v = v_ as char;
+        let y = self.stack.pop();
+        let x = self.stack.pop();
+
+        if y < 0 || x < 0 {
+            return Err(InterpreterError::InvalidCoordinates { x, y });
+        }
+
+        let y_ = y as usize;
+        let x_ = x as usize;
+        let v = self.pop_ascii()?;
 
         let c = self
             .program
-            .get_mut(y)
-            .ok_or(InterpreterError::InvalidCoordinates)?
-            .get_mut(x)
-            .ok_or(InterpreterError::InvalidCoordinates)?;
+            .get_mut(y_)
+            .ok_or(InterpreterError::InvalidCoordinates { x, y })?
+            .get_mut(x_)
+            .ok_or(InterpreterError::InvalidCoordinates { x, y })?;
         *c = v;
 
         Ok(())
     }
 
     fn get(&mut self) -> InterpreterResult<()> {
-        let y = self.stack.pop() as usize;
-        let x = self.stack.pop() as usize;
+        let y = self.stack.pop();
+        let x = self.stack.pop();
+        let y_ = y as usize;
+        let x_ = x as usize;
 
         let c = *self
             .program
-            .get(y)
-            .ok_or(InterpreterError::InvalidCoordinates)?
-            .get(x)
-            .ok_or(InterpreterError::InvalidCoordinates)?;
+            .get(y_)
+            .ok_or(InterpreterError::InvalidCoordinates { x, y })?
+            .get(x_)
+            .ok_or(InterpreterError::InvalidCoordinates { x, y })?;
 
         self.stack.push(c as isize);
 
