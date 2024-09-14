@@ -3,10 +3,12 @@ use std::process::exit;
 use std::{
     env,
     fs::File,
-    io::{self, BufReader, Read},
+    io::{BufReader, Read},
 };
 
-fn main() -> io::Result<()> {
+use anyhow::Result;
+
+fn main() -> Result<()> {
     let mut args = env::args();
     if args.len() < 2 {
         println!("Usage: befunge93-rs [PATH]");
@@ -20,9 +22,9 @@ fn main() -> io::Result<()> {
     buf_reader.read_to_string(&mut program)?;
 
     let mut interpreter = Interpreter::default();
-    interpreter.load_program(&program).unwrap();
+    interpreter.load_program(&program)?;
 
-    interpreter.run().unwrap();
+    interpreter.run()?;
 
     Ok(())
 }

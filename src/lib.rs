@@ -2,6 +2,7 @@ use std::{
     io::{self, BufRead, StdinLock, Stdout, Write},
     num::ParseIntError,
 };
+use thiserror::Error;
 
 type Program = Vec<Vec<char>>;
 type ProgramCounter = (usize, usize);
@@ -69,14 +70,20 @@ pub struct Interpreter<R: BufRead, W: Write, G: Rng> {
     running: bool,
 }
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum InterpreterError {
+    #[error("tried to pop from empty stack")]
     StackEmpty,
-    IoError(io::Error),
+    #[error("io error encountered")]
+    IoError(#[from] io::Error),
+    #[error("unknown instruction encountered: `{0}`")]
     UnknownInstruction(char),
+    #[error("unknown ascii code encountered")]
     InvalidAscii,
+    #[error("tried to access invalid coordinates")]
     InvalidCoordinates,
-    ParseError(ParseIntError),
+    #[error("parse int error encountered")]
+    ParseError(#[from] ParseIntError),
 }
 
 type InterpreterResult<T> = Result<T, InterpreterError>;
