@@ -779,7 +779,7 @@ mod tests {
     }
 
     #[test]
-    fn test_pop_and_output_char() {
+    fn test_pop_and_output_char_with_valid_ascii_code() {
         let mut interpreter = build_interpreter();
         interpreter.load_program("79*2+,@").unwrap();
 
@@ -787,6 +787,19 @@ mod tests {
 
         let output = String::from_utf8_lossy(interpreter.output.get_ref());
         assert_eq!(output, "A");
+    }
+
+    #[test]
+    fn test_pop_and_output_char_with_invalid_ascii_code() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("12-,@").unwrap();
+
+        let result = interpreter.run();
+
+        match result {
+            Err(InterpreterError::InvalidAscii(-1)) => (),
+            _ => assert!(false),
+        }
     }
 
     #[test]
@@ -800,13 +813,39 @@ mod tests {
     }
 
     #[test]
-    fn test_put() {
+    fn test_put_with_valid_ascii_code() {
         let mut interpreter = build_interpreter();
         interpreter.load_program("79*2+21p@\n\n").unwrap();
 
         interpreter.run().unwrap();
 
         assert_eq!(interpreter.program[1][2], 'A');
+    }
+
+    #[test]
+    fn test_put_with_invalid_ascii_code() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("12-21p@\n\n").unwrap();
+
+        let result = interpreter.run();
+
+        match result {
+            Err(InterpreterError::InvalidAscii(-1)) => (),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn test_put_with_invalid_coordinates() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("79*2+89p@\n\n").unwrap();
+
+        let result = interpreter.run();
+
+        match result {
+            Err(InterpreterError::InvalidCoordinates { x: 8, y: 9 }) => (),
+            _ => assert!(false),
+        }
     }
 
     #[test]
@@ -817,6 +856,19 @@ mod tests {
         interpreter.run().unwrap();
 
         assert_eq!(interpreter.stack.pop(), 65);
+    }
+
+    #[test]
+    fn test_get_with_invalid_coordinates() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("89g@\n  A").unwrap();
+
+        let result = interpreter.run();
+
+        match result {
+            Err(InterpreterError::InvalidCoordinates { x: 8, y: 9 }) => (),
+            _ => assert!(false),
+        }
     }
 
     #[test]
@@ -832,6 +884,21 @@ mod tests {
     }
 
     #[test]
+    fn test_get_int_and_push_with_invalid_integer() {
+        let mut interpreter = build_interpreter();
+        interpreter.input.write_all("x\n".as_bytes()).unwrap();
+        interpreter.input.set_position(0);
+        interpreter.load_program("&@").unwrap();
+
+        let result = interpreter.run();
+
+        match result {
+            Err(InterpreterError::ParseError(_)) => (),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
     fn test_get_char_and_push() {
         let mut interpreter = build_interpreter();
         interpreter.input.write_all("A\n".as_bytes()).unwrap();
@@ -841,5 +908,18 @@ mod tests {
         interpreter.run().unwrap();
 
         assert_eq!(interpreter.stack.pop(), 65);
+    }
+
+    #[test]
+    fn test_unknown_instruction() {
+        let mut interpreter = build_interpreter();
+        interpreter.load_program("x").unwrap();
+
+        let result = interpreter.run();
+
+        match result {
+            Err(InterpreterError::UnknownInstruction('x')) => (),
+            _ => assert!(false),
+        }
     }
 }
