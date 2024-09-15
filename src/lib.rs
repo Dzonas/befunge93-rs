@@ -72,8 +72,6 @@ pub struct Interpreter<R: BufRead, W: Write, G: Rng> {
 
 #[derive(Error, Debug)]
 pub enum InterpreterError {
-    #[error("tried to pop from empty stack")]
-    StackEmpty,
     #[error("io error encountered")]
     IoError(#[from] io::Error),
     #[error("unknown instruction encountered: `{0}`")]
