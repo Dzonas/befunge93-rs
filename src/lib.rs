@@ -78,7 +78,7 @@ pub enum InterpreterError {
     IoError(#[from] io::Error),
     #[error("unknown instruction encountered: `{0}`")]
     UnknownInstruction(char),
-    #[error("unknown ascii code encountered: `{0}`")]
+    #[error("tried to pop invalid ascii code: `{0}`")]
     InvalidAscii(isize),
     #[error("tried to access invalid coordinates")]
     InvalidCoordinates { x: isize, y: isize },
