@@ -3,7 +3,17 @@ name = "befunge93-rs"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "befunge93"
+path = "src/bin/cli.rs"
+
+[[bin]]
+name = "befunge93-gui"
+path = "src/bin/gui.rs"
+
 [dependencies]
 anyhow = "1.0.88"
+eframe = "0.28.1"
+egui = "0.28.1"
 rand = "0.8.5"
 thiserror = "1.0.63"
