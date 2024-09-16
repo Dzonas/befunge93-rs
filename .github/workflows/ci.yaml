@@ -19,7 +19,7 @@ jobs:
           toolchain: stable
           components: rustfmt, clippy
       - name: Set up cargo cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
