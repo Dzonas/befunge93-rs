@@ -144,6 +144,10 @@ impl<R: BufRead, W: Write, G: Rng> Interpreter<R, W, G> {
     }
 
     pub fn step(&mut self) -> InterpreterResult<()> {
+        if self.program.is_empty() {
+            return Ok(());
+        }
+
         self.running = true;
 
         let instruction = self.get_instruction();
