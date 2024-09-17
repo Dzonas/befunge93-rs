@@ -132,8 +132,13 @@ impl<R: BufRead, W: Write, G: Rng> Interpreter<R, W, G> {
             }
         }
 
+        self.stack = Stack::new(0);
+        self.pc = (0, 0);
+        self.direction = Direction::Right;
         self.width = longest_line_len;
         self.height = rows_len;
+        self.mode = Mode::Normal;
+        self.running = false;
 
         Ok(())
     }
