@@ -67,7 +67,7 @@ pub struct Interpreter<R: BufRead, W: Write, G: Rng> {
     input: R,
     output: W,
     gen: G,
-    running: bool,
+    enabled: bool,
 }
 
 #[derive(Error, Debug)]
@@ -95,7 +95,7 @@ impl<R: BufRead, W: Write, G: Rng> Interpreter<R, W, G> {
         let width = 0;
         let height = 0;
         let mode = Mode::Normal;
-        let running = false;
+        let enabled = false;
 
         Interpreter {
             stack,
@@ -108,7 +108,7 @@ impl<R: BufRead, W: Write, G: Rng> Interpreter<R, W, G> {
             input,
             output,
             gen,
-            running,
+            enabled,
         }
     }
 
@@ -138,7 +138,7 @@ impl<R: BufRead, W: Write, G: Rng> Interpreter<R, W, G> {
         self.width = longest_line_len;
         self.height = rows_len;
         self.mode = Mode::Normal;
-        self.running = false;
+        self.enabled = true;
 
         Ok(())
     }
@@ -148,8 +148,7 @@ impl<R: BufRead, W: Write, G: Rng> Interpreter<R, W, G> {
             return Ok(());
         }
 
-        self.running = true;
-        while self.running {
+        while self.enabled {
             self.step()?;
         }
 
@@ -157,11 +156,9 @@ impl<R: BufRead, W: Write, G: Rng> Interpreter<R, W, G> {
     }
 
     pub fn step(&mut self) -> InterpreterResult<()> {
-        if self.program.is_empty() {
+        if self.program.is_empty() || !self.enabled {
             return Ok(());
         }
-
-        self.running = true;
 
         let instruction = self.get_instruction();
 
@@ -199,7 +196,7 @@ impl<R: BufRead, W: Write, G: Rng> Interpreter<R, W, G> {
                 '&' => self.get_int_and_push()?,
                 '~' => self.get_char_and_push()?,
                 ' ' => (),
-                '@' => self.running = false,
+                '@' => self.enabled = false,
                 _ if instruction.is_ascii_digit() => self.push_digit_to_stack()?,
                 i => return Err(InterpreterError::UnknownInstruction(i)),
             };
