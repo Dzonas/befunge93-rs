@@ -120,6 +120,10 @@ impl<R: BufRead, W: Write, G: Rng> Interpreter<R, W, G> {
         &self.stack.inner
     }
 
+    pub fn get_enabled(&self) -> bool {
+        self.enabled
+    }
+
     pub fn load_program(&mut self, program: &str) -> InterpreterResult<()> {
         let longest_line_len = program.lines().map(|line| line.len()).max().unwrap_or(0);
         let rows_len = program.lines().count();
