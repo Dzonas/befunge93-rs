@@ -1,10 +1,14 @@
+use befunge93_rs::Interpreter;
+use rand::rngs::ThreadRng;
+use std::io::Cursor;
+
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {
     env_logger::init();
 
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([400.0, 300.0])
+            .with_inner_size([800.0, 600.0])
             .with_min_inner_size([300.0, 220.0]),
         ..Default::default()
     };
@@ -50,19 +54,82 @@ fn main() {
     });
 }
 
-#[derive(Default)]
-struct Befunge93App {}
+struct Befunge93App {
+    program: String,
+    interpreter: Interpreter<Cursor<Vec<u8>>, Cursor<Vec<u8>>, ThreadRng>,
+    running: bool,
+}
 
 impl Befunge93App {
+    fn build_interpreter() -> Interpreter<Cursor<Vec<u8>>, Cursor<Vec<u8>>, ThreadRng> {
+        let input = Cursor::new(Vec::new());
+        // let input = io::stdin().lock();
+        let output = Cursor::new(Vec::new());
+        let gen = rand::thread_rng();
+
+        Interpreter::new(input, output, gen)
+    }
     fn new(_: &eframe::CreationContext<'_>) -> Self {
-        Self::default()
+        let interpreter = Self::build_interpreter();
+        let program = String::new();
+        let running = false;
+
+        Befunge93App {
+            program,
+            interpreter,
+            running,
+        }
     }
 }
 
 impl eframe::App for Befunge93App {
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Hello World!");
+            ui.heading("Program");
+            ui.text_edit_multiline(&mut self.program);
+
+            ui.horizontal(|ui| {
+                if ui.button("Load program").clicked() {
+                    self.interpreter.load_program(&self.program).unwrap();
+                    self.interpreter.set_output(Cursor::new(Vec::new()));
+                }
+
+                if ui.button("Step").clicked() {
+                    self.interpreter.step().unwrap();
+                }
+
+                if ui.button("Run").clicked() {
+                    self.running = true;
+                }
+            });
+            ui.separator();
+            ui.code(String::from_utf8_lossy(
+                self.interpreter.get_output().get_ref(),
+            ));
+            ui.label(
+                self.interpreter
+                    .get_stack()
+                    .iter()
+                    .map(|x| x.to_string())
+                    .collect::<Vec<String>>()
+                    .join(" "),
+            );
+
+            if self.running {
+                ui.label("Running");
+            } else {
+                ui.label("Not running");
+            }
         });
+
+        if self.running {
+            self.interpreter.step().unwrap();
+
+            if !self.interpreter.get_enabled() {
+                self.running = false;
+            }
+
+            ctx.request_repaint();
+        }
     }
 }
