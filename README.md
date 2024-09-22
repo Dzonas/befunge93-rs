@@ -32,6 +32,12 @@ You can also use "step" button to run the program step by step. If you want to r
 
 #### Native
 
+If on Ubuntu/Debian make sure `build-essential` is installed:
+
+```
+sudo apt-get install build-essential
+```
+
 In order to run the native version run:
 
 ```
