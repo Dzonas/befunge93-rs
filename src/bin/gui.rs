@@ -92,7 +92,7 @@ impl eframe::App for Befunge93App {
             });
             ui.add_sized(
                 ui.available_size(),
-                egui::TextEdit::multiline(&mut self.input),
+                egui::TextEdit::multiline(&mut self.input).font(egui::TextStyle::Monospace),
             );
         });
 
@@ -165,7 +165,7 @@ impl eframe::App for Befunge93App {
             });
             ui.add_sized(
                 ui.available_size(),
-                egui::TextEdit::multiline(&mut self.program),
+                egui::TextEdit::multiline(&mut self.program).font(egui::TextStyle::Monospace),
             );
         });
 
