@@ -56,6 +56,7 @@ fn main() {
 
 struct Befunge93App {
     program: String,
+    input: String,
     interpreter: Interpreter<Cursor<Vec<u8>>, Cursor<Vec<u8>>, ThreadRng>,
     running: bool,
 }
@@ -63,7 +64,6 @@ struct Befunge93App {
 impl Befunge93App {
     fn build_interpreter() -> Interpreter<Cursor<Vec<u8>>, Cursor<Vec<u8>>, ThreadRng> {
         let input = Cursor::new(Vec::new());
-        // let input = io::stdin().lock();
         let output = Cursor::new(Vec::new());
         let gen = rand::thread_rng();
 
@@ -72,10 +72,12 @@ impl Befunge93App {
     fn new(_: &eframe::CreationContext<'_>) -> Self {
         let interpreter = Self::build_interpreter();
         let program = String::new();
+        let input = String::new();
         let running = false;
 
         Befunge93App {
             program,
+            input,
             interpreter,
             running,
         }
@@ -84,9 +86,41 @@ impl Befunge93App {
 
 impl eframe::App for Befunge93App {
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Program");
-            ui.text_edit_multiline(&mut self.program);
+        egui::SidePanel::left("left_panel").show(ctx, |ui| {
+            ui.vertical(|ui| {
+                ui.heading("Input");
+            });
+            ui.add_sized(
+                ui.available_size(),
+                egui::TextEdit::multiline(&mut self.input),
+            );
+        });
+
+        egui::SidePanel::right("right_panel").show(ctx, |ui| {
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
+                ui.heading("Stack")
+            });
+            ui.vertical_centered(|ui| {
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    for value in self.interpreter.get_stack().iter().map(|x| x.to_string()) {
+                        egui::Frame::none()
+                            .fill(egui::Color32::DARK_GRAY)
+                            .show(ui, |ui| {
+                                ui.label(
+                                    egui::RichText::new(value)
+                                        .color(egui::Color32::WHITE)
+                                        .size(20.0),
+                                );
+                            });
+                    }
+                });
+            });
+        });
+
+        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+            ui.vertical_centered(|ui| {
+                ui.heading("Controls");
+            });
 
             ui.horizontal(|ui| {
                 if ui.button("Load program").clicked() {
@@ -101,25 +135,38 @@ impl eframe::App for Befunge93App {
                 if ui.button("Run").clicked() {
                     self.running = true;
                 }
-            });
-            ui.separator();
-            ui.code(String::from_utf8_lossy(
-                self.interpreter.get_output().get_ref(),
-            ));
-            ui.label(
-                self.interpreter
-                    .get_stack()
-                    .iter()
-                    .map(|x| x.to_string())
-                    .collect::<Vec<String>>()
-                    .join(" "),
-            );
 
-            if self.running {
-                ui.label("Running");
-            } else {
-                ui.label("Not running");
-            }
+                if ui.button("Stop").clicked() {
+                    self.running = false;
+                }
+
+                if self.running {
+                    ui.label("Running");
+                } else {
+                    ui.label("Not running");
+                }
+            });
+        });
+
+        egui::TopBottomPanel::bottom("bottom_panel")
+            .min_height(100.0)
+            .show(ctx, |ui| {
+                ui.vertical_centered(|ui| {
+                    ui.heading("Output");
+                });
+                ui.label(String::from_utf8_lossy(
+                    self.interpreter.get_output().get_ref(),
+                ));
+            });
+
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.vertical_centered(|ui| {
+                ui.heading("Program");
+            });
+            ui.add_sized(
+                ui.available_size(),
+                egui::TextEdit::multiline(&mut self.program),
+            );
         });
 
         if self.running {
