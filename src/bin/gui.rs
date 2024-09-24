@@ -56,14 +56,13 @@ fn main() {
 
 struct Befunge93App {
     program: String,
-    input: String,
-    interpreter: Interpreter<Cursor<Vec<u8>>, Cursor<Vec<u8>>, ThreadRng>,
+    interpreter: Interpreter<Cursor<String>, Cursor<Vec<u8>>, ThreadRng>,
     running: bool,
 }
 
 impl Befunge93App {
-    fn build_interpreter() -> Interpreter<Cursor<Vec<u8>>, Cursor<Vec<u8>>, ThreadRng> {
-        let input = Cursor::new(Vec::new());
+    fn build_interpreter() -> Interpreter<Cursor<String>, Cursor<Vec<u8>>, ThreadRng> {
+        let input = Cursor::new(String::new());
         let output = Cursor::new(Vec::new());
         let gen = rand::thread_rng();
 
@@ -72,12 +71,10 @@ impl Befunge93App {
     fn new(_: &eframe::CreationContext<'_>) -> Self {
         let interpreter = Self::build_interpreter();
         let program = String::new();
-        let input = String::new();
         let running = false;
 
         Befunge93App {
             program,
-            input,
             interpreter,
             running,
         }
@@ -92,7 +89,8 @@ impl eframe::App for Befunge93App {
             });
             ui.add_sized(
                 ui.available_size(),
-                egui::TextEdit::multiline(&mut self.input).font(egui::TextStyle::Monospace),
+                egui::TextEdit::multiline(self.interpreter.get_input_mut().get_mut())
+                    .font(egui::TextStyle::Monospace),
             );
         });
 

@@ -112,6 +112,14 @@ impl<R: BufRead, W: Write, G: Rng> Interpreter<R, W, G> {
         }
     }
 
+    pub fn get_input(&self) -> &R {
+        &self.input
+    }
+
+    pub fn get_input_mut(&mut self) -> &mut R {
+        &mut self.input
+    }
+
     pub fn get_output(&self) -> &W {
         &self.output
     }
