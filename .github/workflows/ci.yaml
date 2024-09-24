@@ -63,7 +63,7 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-deploy-${{ hashFiles('**/Cargo.lock') }}
       - name: Install trunk
-        run: cargo install --locked trunk
+        run: cargo binstall trunk
       - name: Build the application
         run: trunk build --release --public-url https://dzonas.github.io/befunge93-rs
       - name: Setup Pages
