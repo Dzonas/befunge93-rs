@@ -58,6 +58,8 @@ struct Befunge93App {
     program: String,
     interpreter: Interpreter<Cursor<String>, Cursor<Vec<u8>>, ThreadRng>,
     running: bool,
+    is_error_window_open: bool,
+    error_message: String,
 }
 
 impl Befunge93App {
@@ -72,17 +74,28 @@ impl Befunge93App {
         let interpreter = Self::build_interpreter();
         let program = String::new();
         let running = false;
+        let is_error_window_open = false;
+        let error_message = String::new();
 
         Befunge93App {
             program,
             interpreter,
             running,
+            is_error_window_open,
+            error_message,
         }
     }
 }
 
 impl eframe::App for Befunge93App {
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
+        egui::Window::new("Errors")
+            .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
+            .open(&mut self.is_error_window_open)
+            .show(ctx, |ui| {
+                ui.label(&self.error_message);
+            });
+
         egui::SidePanel::left("left_panel").show(ctx, |ui| {
             ui.vertical(|ui| {
                 ui.heading("Input");
@@ -122,12 +135,20 @@ impl eframe::App for Befunge93App {
 
             ui.horizontal(|ui| {
                 if ui.button("Load program").clicked() {
-                    self.interpreter.load_program(&self.program).unwrap();
+                    let result = self.interpreter.load_program(&self.program);
+                    if let Err(inner) = result {
+                        self.error_message = format!("{}", inner);
+                        self.is_error_window_open = true;
+                    }
                     self.interpreter.set_output(Cursor::new(Vec::new()));
                 }
 
                 if ui.button("Step").clicked() {
-                    self.interpreter.step().unwrap();
+                    let result = self.interpreter.step();
+                    if let Err(inner) = result {
+                        self.error_message = format!("{}", inner);
+                        self.is_error_window_open = true;
+                    }
                 }
 
                 if ui.button("Run").clicked() {
@@ -168,7 +189,11 @@ impl eframe::App for Befunge93App {
         });
 
         if self.running {
-            self.interpreter.step().unwrap();
+            let result = self.interpreter.step();
+            if let Err(inner) = result {
+                self.error_message = format!("{}", inner);
+                self.is_error_window_open = true;
+            }
 
             if !self.interpreter.get_enabled() {
                 self.running = false;
