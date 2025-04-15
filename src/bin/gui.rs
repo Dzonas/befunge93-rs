@@ -2,6 +2,11 @@ use befunge93_rs::Interpreter;
 use rand::rngs::ThreadRng;
 use std::io::Cursor;
 
+const HELLO_WORLD_PROGRAM: &str = ">              v
+v\"Hello World!\"<
+>:v
+^,_@";
+
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {
     env_logger::init();
@@ -70,9 +75,10 @@ impl Befunge93App {
 
         Interpreter::new(input, output, gen)
     }
+
     fn new(_: &eframe::CreationContext<'_>) -> Self {
         let interpreter = Self::build_interpreter();
-        let program = String::new();
+        let program = String::from(HELLO_WORLD_PROGRAM);
         let running = false;
         let is_error_window_open = false;
         let error_message = String::new();
